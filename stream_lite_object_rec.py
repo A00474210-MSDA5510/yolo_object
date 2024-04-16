@@ -6,16 +6,7 @@ import time
 import threading
 from queue import Queue
 
-st.title("OpenCV Filters on Video Stream")
-model = YOLO('yolov8n.pt')
-item_to_track = [45, 39, 41]
 
-
-
-lock = threading.Lock()
-img_container = {"img": None}
-if "frames" not in st.session_state:
-    st.session_state.frames = Queue()
 
 def transform(frame):
     img = frame.to_ndarray(format="bgr24")
@@ -25,23 +16,6 @@ def transform(frame):
     img = results[0].plot()
     return av.VideoFrame.from_ndarray(img, format="bgr24")
 
-webrtc_ctx = webrtc_streamer(
-    key="object-detection",
-    video_frame_callback=transform,
-    sendback_audio=False,
-    rtc_configuration={  # Add this line
-        "iceServers": [{"urls": ["stun:stun2.l.google.com:19302"]}]},
-    media_stream_constraints={"video": True, "audio": False},
-)
-
-if "frames" not in st.session_state:
-    st.session_state["frames"] = None
-
-if "start_time" not in st.session_state:
-    st.session_state['start_time'] = None
-
-if "queue_size" not in st.session_state:
-    st.session_state.queue_size = 0
 
 
 
@@ -57,9 +31,39 @@ def time_calc(webrtc_ctx):
     elif not webrtc_ctx.state.playing and st.session_state.start_time != None:
         elapsed_time = time.time() - st.session_state.start_time
         st.session_state.start_time = None
-        st.write(elapsed_time)
-        result = st.session_state.queue_size
-        st.write(result)
+        st.write(f"elapsed time {elapsed_time:.2f}")
 
-time_calc(webrtc_ctx)
-st.write(webrtc_ctx.state.playing)
+
+
+
+
+if __name__ == "__main__":
+
+    st.title("OpenCV Filters on Video Stream")
+    model = YOLO('yolov8n.pt')
+    item_to_track = [45, 39, 41]
+
+    lock = threading.Lock()
+    img_container = {"img": None}
+    if "frames" not in st.session_state:
+        st.session_state.frames = Queue()
+
+    webrtc_ctx = webrtc_streamer(
+        key="object-detection",
+        video_frame_callback=transform,
+        sendback_audio=False,
+        rtc_configuration={  # Add this line
+            "iceServers": [{"urls": ["stun:stun2.l.google.com:19302"]}]},
+        media_stream_constraints={"video": True, "audio": False},
+    )
+
+    if "frames" not in st.session_state:
+        st.session_state["frames"] = None
+
+    if "start_time" not in st.session_state:
+        st.session_state['start_time'] = None
+
+    if "queue_size" not in st.session_state:
+        st.session_state.queue_size = 0
+
+    time_calc(webrtc_ctx)
