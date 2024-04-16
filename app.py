@@ -4,25 +4,15 @@ from ultralytics import YOLO
 import time
 import json
 
-
-def toggle_scanning():
-    """
-    For Toggle button --> streamlit official doc shows this is the way
-    """
-    st.session_state.toggle_button = not st.session_state.toggle_button
-
-
-def clear_data_and_reset():
-    """
-    Delete all data to refresh data
-    """
-    st.session_state.clear()
-    st.experimental_rerun()
+ITEMS_TO_TRACK = [45, 39, 41]  # 45: bowl, 39: bottle, 41: cup
+MODEL_PATH = "yolov8n.pt"
 
 
 class ParseSingleResult:
     """
     Made this To be able to found one specific item in one frame easier.
+    Usually I would put this in my helper directory, but leave it here
+    so you don't have to go digging.
     """
 
     def __init__(self, result):
@@ -42,6 +32,25 @@ class ParseSingleResult:
         return any(match_cls in self.classes for match_cls in match_list)
 
 
+def toggle_scanning():
+    """
+    For Toggle button --> streamlit official doc shows this is the way
+    """
+    st.session_state.toggle_button = not st.session_state.toggle_button
+
+
+def load_model():
+    return YOLO(MODEL_PATH)
+
+
+def clear_data_and_reset():
+    """
+    Delete all data to refresh data
+    """
+    st.session_state.clear()
+    st.experimental_rerun()
+
+
 def setup_page():
     """
     All setup goes here.
@@ -59,8 +68,7 @@ def setup_page():
 
 def main():
     setup_page()
-    items_to_track = [45, 39, 41]  # 45: bowl, 39: bottle, 41: cup
-    model = YOLO('yolov8n.pt')  # Initialize the YOLO model
+    model = load_model()  # Initialize the YOLO model
     camera = cv2.VideoCapture(0)  # Start the webcam
     frame_placeholder = st.empty()  # Placeholder for displaying frames
 
@@ -79,7 +87,7 @@ def main():
 
             results = model.track(frame, persist=True)
             parsed_results = ParseSingleResult(results[0])
-            annotated_frame = results[0].plot() if parsed_results.included_in_frame(items_to_track) else frame
+            annotated_frame = results[0].plot() if parsed_results.included_in_frame(ITEMS_TO_TRACK) else frame
             st.session_state.frames.append(results[0])
             display_frame = cv2.cvtColor(annotated_frame, cv2.COLOR_BGR2RGB)
             frame_placeholder.image(display_frame)
