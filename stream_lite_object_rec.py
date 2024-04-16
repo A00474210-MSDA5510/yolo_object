@@ -1,35 +1,24 @@
 import streamlit as st
-from streamlit_webrtc import webrtc_streamer, VideoProcessorBase
+from streamlit_webrtc import webrtc_streamer
 from ultralytics import YOLO
 import av
 import time
-import queue
 import threading
 
 st.title("OpenCV Filters on Video Stream")
+model = YOLO('yolov8n.pt')
 item_to_track = [45, 39, 41]
 
 if "frames" not in st.session_state:
     st.session_state.frames = []
 
 lock = threading.Lock()
-class transform(VideoProcessorBase):
-    result_queue = []
 
-    def __init__(self) -> None:
-        self._model = YOLO('yolov8n.pt')
-
-    def recv(self, frame: av.VideoFrame) -> av.VideoFrame:
-        img = frame.to_ndarray(format="bgr24")
-        results = self._model.track(img, persist=True)
-        img = results[0].plot()
-        self.result_queue.append(results[0])
-        st.session_state.frames.append(results[0])
-        st.write(len(st.session_state.frames))
-
-
-
-        return av.VideoFrame.from_ndarray(img, format="bgr24")
+def transform(frame):
+    img = frame.to_ndarray(format="bgr24")
+    results = model.track(img, persist=True)
+    img = results[0].plot()
+    return av.VideoFrame.from_ndarray(img, format="bgr24")
 
 webrtc_ctx = webrtc_streamer(
     key="object-detection",

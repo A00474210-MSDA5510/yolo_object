@@ -1,12 +1,19 @@
 import cv2
 from ultralytics import YOLO
+import json
+
+class parse_result:
+    def __init__(self, result):
+        self.json_file = json.loads(result.tojson())
+        self.name = [i["name"] for i in self.json_file]
+        self.obj_class = [i["class"] for i in self.json_file]
 
 # Load the YOLOv8 model
 model = YOLO('yolov8n.pt')
+model.classes = [45, 39, 41]
 item_to_track = [45, 39, 41]
 
 # Open the video file
-video_path = "vids.mp4"
 cap = cv2.VideoCapture(0)
 fps = cap.get(cv2.CAP_PROP_FPS)
 result_array = []
@@ -20,12 +27,10 @@ while cap.isOpened():
         print(type(frame))
         results = model.track(frame, persist=True)
         result_array.append(results)
-
-        # Visualize the results on the frame
-        annotated_frame = results[0].plot()
-        print(type(annotated_frame))
-
-        # Display the annotated frame
+        annotated_frame = frame
+        if any(same_item in parse_result(results[0]).obj_class for same_item in item_to_track):
+            print("LOLOLOLOLOLOLOLOLOLOL")
+            annotated_frame = results[0].plot()
         cv2.imshow("YOLOv8 Tracking", annotated_frame)
         print(len(results))
 
@@ -39,7 +44,9 @@ while cap.isOpened():
 # Release the video capture object and close the display window
 for i in model.names:
     print(i, model.names[i])
-print(type(result_array[0][0]))
+for i in result_array:
+    print("LOL")
+    print(parse_result(i[0]).name)
 print(fps)
 cap.release()
 cv2.destroyAllWindows()
