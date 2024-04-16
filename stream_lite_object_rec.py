@@ -39,7 +39,7 @@ def time_calc(webrtc_ctx):
 
 if __name__ == "__main__":
 
-    st.title("OpenCV Filters on Video Stream")
+    st.title("Yolo over Web!")
     model = YOLO('yolov8n.pt')
     item_to_track = [45, 39, 41]
 
