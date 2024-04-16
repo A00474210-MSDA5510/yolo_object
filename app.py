@@ -106,6 +106,7 @@ def update_total_run_time():
 
 def display_results():
     for item_id in [45, 39, 41]:
+        # for each ID display it's number of frame
         count = sum(1 for frame in st.session_state.frames if ParseSingleResult(frame).included_in_frame([item_id]))
         st.write(f"The video contains {YOLO('yolov8n.pt').names[item_id]} for {count} frames")
     st.write(f"The ML model processed: {len(st.session_state.frames)} frame")
