@@ -24,3 +24,9 @@ The code is well-documented and employs the pre-trained `yolov8n.pt` model, usin
 
 * The reset data button will remove all the saved data in the streamlit application
 * Toggle scanning will start the camera, toggle it again it will pause and display result.
+
+
+## [stream_lite_object_rec.py](https://yoloobject-9t7mrcbkzl7p5bzmilbkfl.streamlit.app/)
+___
+This is a link to streamlit link, I have build this one on streamlit, using streamlit_webrtc, however streamlit is quite single threaded and the only thing I can do is draw the bounding box over the video, and please don't judge me based on the code in this file, it's more of a scratch file, but it's quite neat
+* Access webcam over internet. 
