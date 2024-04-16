@@ -1,52 +1,115 @@
+import streamlit as st
 import cv2
 from ultralytics import YOLO
+import time
 import json
 
-class parse_result:
+
+def toggle_scanning():
+    """
+    For Toggle button --> streamlit official doc shows this is the way
+    """
+    st.session_state.toggle_button = not st.session_state.toggle_button
+
+
+def clear_data_and_reset():
+    """
+    Delete all data to refresh data
+    """
+    st.session_state.clear()
+    st.experimental_rerun()
+
+
+class ParseSingleResult:
+    """
+    Made this To be able to found one specific item in one frame easier.
+    """
+
     def __init__(self, result):
-        self.json_file = json.loads(result.tojson())
-        self.name = [i["name"] for i in self.json_file]
-        self.obj_class = [i["class"] for i in self.json_file]
+        """
+        made ez to get json
+        result.names only give you a list of all names @_@
+        """
+        self.data = json.loads(result.tojson())
+        self.names = [item["name"] for item in self.data]
+        self.classes = [item["class"] for item in self.data]
 
-# Load the YOLOv8 model
-model = YOLO('yolov8n.pt')
-model.classes = [45, 39, 41]
-item_to_track = [45, 39, 41]
+    def included_in_frame(self, match_list):
+        """
+        return True: if one or more items in list matches one item in frame --> object class
+        return False: if no item matches
+        """
+        return any(match_cls in self.classes for match_cls in match_list)
 
-# Open the video file
-cap = cv2.VideoCapture(0)
-fps = cap.get(cv2.CAP_PROP_FPS)
-result_array = []
-# Loop through the video frames
-while cap.isOpened():
-    # Read a frame from the video
-    success, frame = cap.read()
 
-    if success:
-        # Run YOLOv8 tracking on the frame, persisting tracks between frames
-        print(type(frame))
-        results = model.track(frame, persist=True)
-        result_array.append(results)
-        annotated_frame = frame
-        if any(same_item in parse_result(results[0]).obj_class for same_item in item_to_track):
-            print("LOLOLOLOLOLOLOLOLOLOL")
-            annotated_frame = results[0].plot()
-        cv2.imshow("YOLOv8 Tracking", annotated_frame)
-        print(len(results))
+def setup_page():
+    """
+    All setup goes here.
+    """
+    st.title("Webcam Display Streamlit App")
+    st.caption("Powered by OpenCV and Streamlit")
+    if "toggle_button" not in st.session_state:
+        st.session_state.toggle_button = False
+    if "total_time" not in st.session_state:
+        st.session_state.total_time = 0.0
+    st.button("Toggle Scanning", on_click=toggle_scanning)
+    if st.button("Reset Data"):
+        clear_data_and_reset()
 
-        # Break the loop if 'q' is pressed
-        if cv2.waitKey(1) & 0xFF == ord("q"):
-            break
+
+def main():
+    setup_page()
+    items_to_track = [45, 39, 41]  # 45: bowl, 39: bottle, 41: cup
+    model = YOLO('yolov8n.pt')  # Initialize the YOLO model
+    camera = cv2.VideoCapture(0)  # Start the webcam
+    frame_placeholder = st.empty()  # Placeholder for displaying frames
+
+    if "frames" not in st.session_state:
+        st.session_state['frames'] = []
+
+    if st.session_state.toggle_button:
+        if "start_time" not in st.session_state:
+            st.session_state['start_time'] = time.time()  # For Tracking time
+
+        while camera.isOpened():
+            success, frame = camera.read()
+            if not success:
+                st.error("Failed to capture video.")
+                break
+
+            results = model.track(frame, persist=True)
+            parsed_results = ParseSingleResult(results[0])
+            annotated_frame = results[0].plot() if parsed_results.included_in_frame(items_to_track) else frame
+            st.session_state.frames.append(results[0])
+            display_frame = cv2.cvtColor(annotated_frame, cv2.COLOR_BGR2RGB)
+            frame_placeholder.image(display_frame)
+
     else:
-        # Break the loop if the end of the video is reached
-        break
+        if "start_time" in st.session_state:
+            update_total_run_time()
+            display_results()
 
-# Release the video capture object and close the display window
-for i in model.names:
-    print(i, model.names[i])
-for i in result_array:
-    print("LOL")
-    print(parse_result(i[0]).name)
-print(fps)
-cap.release()
-cv2.destroyAllWindows()
+    camera.release()
+    cv2.destroyAllWindows()
+
+
+def update_total_run_time():
+    elapsed_time = time.time() - st.session_state.start_time
+    st.session_state.total_time += elapsed_time
+    del st.session_state['start_time']  # Clean up start time
+    st.write(f"Total scanning time: {st.session_state.total_time:.2f}s")  # Recording time
+
+    # Total frame/fps = video time
+    st.write(f"video time based on fps: "
+             f"{len(st.session_state.frames) / cv2.VideoCapture(0).get(cv2.CAP_PROP_FPS):.2f}s")
+
+
+def display_results():
+    for item_id in [45, 39, 41]:
+        count = sum(1 for frame in st.session_state.frames if ParseSingleResult(frame).included_in_frame([item_id]))
+        st.write(f"The video contains {YOLO('yolov8n.pt').names[item_id]} for {count} frames")
+    st.write(f"The ML model processed: {len(st.session_state.frames)} frame")
+
+
+if __name__ == "__main__":
+    main()
